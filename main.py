@@ -32,32 +32,33 @@ def choose_output_dir():
     raise SystemExit("no writable output directory for entry.txt")
 
 
-def verify(path):
+def verify(path, data):
     """Read the written file back and hold it to the pinned bytes, hash,
     character count and exact text. Any mismatch aborts the run."""
     with open(path, "rb") as fh:
-        data = fh.read()
-    if len(data) != EXPECTED_BYTES:
-        raise SystemExit(f"byte count {len(data)} != pinned {EXPECTED_BYTES}")
-    digest = hashlib.sha256(data).hexdigest()
+        back = fh.read()
+    if back != data:
+        raise SystemExit("read-back bytes differ from the pinned line")
+    if len(back) != EXPECTED_BYTES:
+        raise SystemExit(f"byte count {len(back)} != pinned {EXPECTED_BYTES}")
+    digest = hashlib.sha256(back).hexdigest()
     if digest != EXPECTED_SHA256:
         raise SystemExit(f"sha256 {digest} != pinned {EXPECTED_SHA256}")
-    text = data.decode("utf-8")
+    text = back.decode("utf-8")
     if len(text) < 1 or len(text) > MAX_CHARS:
         raise SystemExit(f"character count {len(text)} outside 1..{MAX_CHARS}")
     if not text.strip():
         raise SystemExit("entry is only whitespace")
-    if text != LINE:
-        raise SystemExit("read-back text differs from the pinned line")
     return text
 
 
 def main():
     out_dir = choose_output_dir()
     path = os.path.join(out_dir, "entry.txt")
-    with open(path, "w", encoding="utf-8", newline="") as fh:
-        fh.write(LINE)
-    text = verify(path)
+    data = LINE.encode("utf-8")
+    with open(path, "wb") as fh:
+        fh.write(data)
+    text = verify(path, data)
     print(f"wrote {path}: {len(text)} chars, "
           f"sha256 {EXPECTED_SHA256[:12]}...")
 
